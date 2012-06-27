@@ -29,7 +29,7 @@ public:
                 program.blocks[i].getLeft()->getWidth() - program.blocks[i].getX() - cellX > cellX ||
                 program.blocks[i].getLeft()->getHeight() - program.blocks[i].getY() - cellY > cellY) {
                 error << "Error: the described cellular automaton accesses cells not in his neighborhood. This is not possible without pointers. It will be continued with pointers." << endl;
-                program.noPointer = true;
+                program.noPointer = false;
             }
         }
         return true;
