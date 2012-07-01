@@ -21,6 +21,7 @@
 #include "BasicData.h"
 #include "SemanticsAnalyser.h"
 #include "CodeGenerator.h"
+#include "ZasimCodeGenerator.h"
 #include "FunctionAnalyser.h"
 /*#include <stdlib.h>
 #include <stdio.h>
@@ -40,7 +41,7 @@ int main(int argc, char** argv) {
     Lexer lexer(name, strTable);
     Parser parser(lexer, strTable);
     SemanticsAnalyser analyser(varTable);
-    CodeGenerator cgen(strTable, varTable, name0);
+    ZasimCodeGenerator cgen(strTable, varTable, name0);
     FunctionAnalyser fana(strTable, varTable, name0);
 
     CellFile file;
