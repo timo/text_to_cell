@@ -43,6 +43,10 @@ private:
     map<int, counted_ptr<Variable> > & varTable;
     stringstream error;
     int cellX, cellY;
+
+    /**
+     * Contains what values can be in sets for each subcell.
+     */
     Picture<counted_ptr<Set> > posSet;
 
     bool analyseHead(Head & head) {
@@ -156,33 +160,36 @@ private:
                 } else if ((pic->get(i,j)->getType() == CELL_IDENTIFIER)
                         || (pic->get(i,j)->getType() == IDENTIFIER_IN_SET)) {
 
-                    if (!(varTable[pic->get(i,j)->getIdentNumber()].get())) {
+                    auto identNum = pic->get(i,j)->getIdentNumber();
+                    if (!(varTable[identNum].get())) {
                         // never before seen identifier musst be local variable
-                        varTable[pic->get(i,j)->getIdentNumber()] = counted_ptr<Variable>(new VariableContent());
-
+                        varTable[identNum] = counted_ptr<Variable>(new VariableContent());
                     }
 
-                    if ((varTable[pic->get(i,j)->getIdentNumber()]->getType() == VAR_CONTENT)) {
-                        if (!(static_cast<VariableContent*>(varTable[pic->get(i,j)->getIdentNumber()].get())->defInBlock(block.getBlockIdent()))) {
+                    if ((varTable[identNum]->getType() == VAR_CONTENT)) {
+                        auto varContent = static_cast<VariableContent*>(varTable[pic->get(i,j)->getIdentNumber()].get());
+                        if (!(varContent->defInBlock(block.getBlockIdent()))) {
                             // variable was previously undefined in this block has been seen in another block
                             VariableContent::Koord koord;
                             koord.x = i; koord.y = j;
-                            static_cast<VariableContent*>(varTable[pic->get(i,j)->getIdentNumber()].get())->setKoord(block.getBlockIdent(), koord);
+                            varContent->setKoord(block.getBlockIdent(), koord);
                         }
 
-                    } else if ((varTable[pic->get(i,j)->getIdentNumber()]->getType() == SET_CONTENT)) {
+                    } else if ((varTable[identNum]->getType() == SET_CONTENT)) {
                         // the identifier is part of a standard set is this identifier possible in this cell
-                        if (!identInSet(pic->get(i,j)->getIdentNumber(), posSet.get(x,y))) {
+                        if (!identInSet(identNum, posSet.get(x,y))) {
                             error << "Error: an identifier on the left side of a block does not fit into its cell" << endl;
                             return false;
                         }
                     } else {
-                        error << "Error: unexpected identifier in the left picture of a block" << endl << "     (probably an identifier connected to a set witout 'in' before it)" << endl;
+                        error << "Error: unexpected identifier in the left picture of a block" << endl;
+                        error << "     (probably an identifier connected to a set witout 'in' before it)" << endl;
                         return false;
                     }
                 }
             }
         }
+
         for (int i = 0; i < pic->getWidth() ; i++) {
             int x = (i - block.getX()) % cellX;
             if (x < 0) x += cellX;
