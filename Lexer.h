@@ -29,25 +29,29 @@ public:
         return result;
     }
 
+    void push_token(TokenType ttype) {
+        push_token(ttype);
+    }
+
     void parseString(string line, bool inPic = false) {
         int x = 0;
         while (x < line.size()) {
             switch(line[x]) {
                 case '\r': x++; break;
                 case ' ': x++; break;
-                case '-': x++; buffer.push(counted_ptr<Token>(new Token(MINUS))); break;
-                case '*': x++; buffer.push(counted_ptr<Token>(new Token(STAR)));break;
-                case '%': x++; buffer.push(counted_ptr<Token>(new Token(PERCENT)));break;
-                case '(': x++; buffer.push(counted_ptr<Token>(new Token(LBRACE)));break;
-                case ')': x++; buffer.push(counted_ptr<Token>(new Token(RBRACE)));break;
-                case '{': x++; buffer.push(counted_ptr<Token>(new Token(LCURLY)));break;
-                case '}': x++; buffer.push(counted_ptr<Token>(new Token(RCURLY)));break;
-                case ',': x++; buffer.push(counted_ptr<Token>(new Token(COMMA)));break;
-                case '?': x++; buffer.push(counted_ptr<Token>(new Token(QMARK)));break;
-                case '$': x++; buffer.push(counted_ptr<Token>(new Token(MAIN_CELL)));break;
+                case '-': x++; push_token(MINUS); break;
+                case '*': x++; push_token(STAR);break;
+                case '%': x++; push_token(PERCENT);break;
+                case '(': x++; push_token(LBRACE);break;
+                case ')': x++; push_token(RBRACE);break;
+                case '{': x++; push_token(LCURLY);break;
+                case '}': x++; push_token(RCURLY);break;
+                case ',': x++; push_token(COMMA);break;
+                case '?': x++; push_token(QMARK);break;
+                case '$': x++; push_token(MAIN_CELL);break;
                 case '.':
                     while ((x < line.size()) && ((line[x] == '.') || (line[x] == ' '))) x++;
-                    buffer.push(counted_ptr<Token>(new Token(DOT_DOT_DOT)));
+                    push_token(DOT_DOT_DOT);
                     break;
                 case '/':
                     if (++x < line.size()) {
@@ -57,46 +61,46 @@ public:
                             break;
                         }
                     }
-                    buffer.push(counted_ptr<Token>(new Token(SLASH)));break;
+                    push_token(SLASH);break;
                 case '=':
                     if (++x < line.size()) {
                         if (line[x] == '=') {
                             x++;
-                            buffer.push(counted_ptr<Token>(new Token(EQUALS_EQUALS)));
+                            push_token(EQUALS_EQUALS);
                         } else if (line[x] == '>') {
                             x++;
-                            buffer.push(counted_ptr<Token>(new Token(ARROW)));
-                        } else buffer.push(counted_ptr<Token>(new Token(EQUALS)));
-                    } else buffer.push(counted_ptr<Token>(new Token(EQUALS)));
+                            push_token(ARROW);
+                        } else push_token(EQUALS);
+                    } else push_token(EQUALS);
                     break;
                 case '<':
                     if (++x < line.size() && line[x] == '=') {
                             x++;
-                            buffer.push(counted_ptr<Token>(new Token(LESS_EQ)));
-                    } else buffer.push(counted_ptr<Token>(new Token(LESS)));
+                            push_token(LESS_EQ);
+                    } else push_token(LESS);
                     break;
                 case '>':
                     if (++x < line.size() && line[x] == '=') {
                             x++;
-                            buffer.push(counted_ptr<Token>(new Token(GREATER_EQ)));
-                    } else buffer.push(counted_ptr<Token>(new Token(GREATER)));
+                            push_token(GREATER_EQ);
+                    } else push_token(GREATER);
                     break;
                 case '!':
                     if (++x < line.size() && line[x] == '=') {
                             x++;
-                            buffer.push(counted_ptr<Token>(new Token(NOT_EQ)));
-                    } else buffer.push(counted_ptr<Token>(new Token(ERROR)));
+                            push_token(NOT_EQ);
+                    } else push_token(ERROR);
                     break;
                 case '+':
                     if ((++x < line.size()) && (line[x] == '-') && !inPic) {
                         parsePicture(x -1, posy);
                         parseString(text[posy]);
                         return;
-                    } else buffer.push(counted_ptr<Token>(new Token(PLUS)));
+                    } else push_token(PLUS);
                     break;
                 case '_':
                     while ((x < line.size()) && (line[x] == '_')) x++;
-                    buffer.push(counted_ptr<Token>(new Token(LINE)));
+                    push_token(LINE);
                     break;
                 default:
                     if (isDigit(line[x])) {
@@ -107,7 +111,7 @@ public:
                         break;
                     }
                     //should not be reached
-                    buffer.push(counted_ptr<Token>(new Token(ERROR)));
+                    push_token(ERROR);
                     return;
             }
         }
@@ -169,22 +173,22 @@ private:
         while ((++posx < line.size()) && (isChar(line[posx]) || isDigit(line[posx]))) result.push_back(line[posx]);
 
         if (result == "in") {
-            buffer.push(counted_ptr<Token>(new Token(IN)));
+            push_token(IN);
             return posx;
         } else if (result == "turn") {
-            buffer.push(counted_ptr<Token>(new Token(TURN)));
+            push_token(TURN);
             return posx;
         } else if (result == "else") {
-            buffer.push(counted_ptr<Token>(new Token(ELSE)));
+            push_token(ELSE);
             return posx;
         } else if (result == "mirrorX") {
-            buffer.push(counted_ptr<Token>(new Token(MIRROR_X)));
+            push_token(MIRROR_X);
             return posx;
         } else if (result == "mirrorY") {
-            buffer.push(counted_ptr<Token>(new Token(MIRROR_Y)));
+            push_token(MIRROR_Y);
             return posx;
         } else if (result == "nopointer") {
-            buffer.push(counted_ptr<Token>(new Token(NO_POINTER)));
+            push_token(NO_POINTER);
             return posx;
         }
 
@@ -306,7 +310,7 @@ private:
             }
 
         } else {
-            buffer.push(counted_ptr<Token>(new Token(ERROR)));
+            push_token(ERROR);
             for (int j = yvec.front(); j <= yvec.back(); j++)
                 //text[j].erase(xvec.front(), xvec.back() - xvec.front() + 1);
                 for (int i = xvec.front(); i <= xvec.back(); i++) {
