@@ -56,6 +56,8 @@ public:
 		return error.str();
 	}
 
+	Picture<counted_ptr<vector<CellStatement>>> setLists;
+
 private:
 	map<int, counted_ptr<Variable>> & varTable;
 	StringTable & strTable;
@@ -65,7 +67,6 @@ private:
 	int cellX, cellY;
 	Picture<counted_ptr<Set>> posSet;
 	
-	Picture<counted_ptr<vector<CellStatement>>> setLists;
 	int mainX, mainY;
 	Picture<int> instance;
 	bool finished, seriousError, doTable, vonNeumann;

@@ -20,7 +20,7 @@
 #include "Parser.h"
 #include "BasicData.h"
 #include "SemanticsAnalyser.h"
-#include "CodeGenerator.h"
+//#include "CodeGenerator.h"
 #include "ZasimCodeGenerator.h"
 #include "FunctionAnalyser.h"
 /*#include <stdlib.h>
@@ -41,15 +41,15 @@ int main(int argc, char** argv) {
     Lexer lexer(name, strTable);
     Parser parser(lexer, strTable);
     SemanticsAnalyser analyser(varTable);
-    ZasimCodeGenerator cgen(strTable, varTable, name0);
     FunctionAnalyser fana(strTable, varTable, name0);
+    ZasimCodeGenerator cgen(strTable, varTable, name0);
 
     CellFile file;
     bool b(false),c(false),d(false),e(false);
     b = parser.parseFile(file);
     if (b) c = analyser.analyseProgram(file);
     if (c) d = fana.analyseFunction(file);
-    if (d) e = cgen.generateCode(file);
+    if (d) e = cgen.generateCode(file, fana.setLists);
 
 
     ofstream outStream;

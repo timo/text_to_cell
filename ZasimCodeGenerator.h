@@ -15,7 +15,7 @@
 
 class ZasimCodeGenerator {
 public:
-	ZasimCodeGenerator(StringTable & strTable, map<int, counted_ptr<Variable>> & varTable, string name) 
+	ZasimCodeGenerator(StringTable & strTable, map<int, counted_ptr<Variable>> & varTable, string name)
 	: varTable(varTable), strTable(strTable), posSet(counted_ptr<Set>(new Set())) {
 		outStream.open(name + ".zac");
 	}
@@ -24,12 +24,14 @@ public:
 		outStream.close();
 	}
 
-	bool generateCode(CellFile & program) {
-		cellX = program.head.getCell()->getWidth();
-		cellY = program.head.getCell()->getHeight();
+	bool generateCode(CellFile & _program, Picture<counted_ptr<vector<CellStatement>>> &_setLists) {
+		setLists = &_setLists;
+		program = &_program;
+		cellX = program->head.getCell()->getWidth();
+		cellY = program->head.getCell()->getHeight();
 		posSet.setSize(cellX, cellY);
 
-		counted_ptr<Picture<counted_ptr<CellStatement>>> pic = program.head.getCell();
+		counted_ptr<Picture<counted_ptr<CellStatement>>> pic = program->head.getCell();
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
 				if (pic->get(i,j)->getType() != EMPTY) {
@@ -53,6 +55,8 @@ private:
 	map<int, counted_ptr<Variable>> & varTable;
 	StringTable & strTable;
 	stringstream error;
+	Picture<counted_ptr<vector<CellStatement>>> *setLists;
+	CellFile *program;
 	//string getNeighbors, giveNeighbors;
 
 	int cellX, cellY;
@@ -67,6 +71,29 @@ private:
 		outStream << "}";
 	}
 
+	void intraName(int i, int j) {
+		outStream << "c" << i << "_" << j;
+	}
+
+	void writeSetContents(int i, int j) {
+		bool putComma(false);
+		auto stmt = setLists->get(i, j)->begin();
+		auto end = setLists->get(i, j)->end();
+		for (;stmt != end; stmt++) {
+			if (putComma++) outStream << ", ";
+			switch (stmt->getType()) {
+			case CELL_IDENTIFIER:
+				outStream << "'" << strTable.getString(stmt->getIdentNumber()) << "'";
+				break;
+			case CELL_NUMBER:
+				outStream << stmt->getIdentNumber();
+				break;
+			default:
+				error << "cell " << i << ", " << j << " contains a strange set:" << stmt->print();
+			}
+		}
+	}
+	
 	/**
 	 * Write out the symbol list.
 	 * At the moment, there's only the 'symbol' list, but in the future,
@@ -74,16 +101,20 @@ private:
 	 */
 	void writeSymbols() {
 		bool putComma(false);
-		outStream << " 'symbols': {" << endl;
-		outStream << "  'symbol': [" << endl;
-		// XXX: string table doesn't have a good order and doesn't say
-		//      which string is for what ...
-		for(int idx = 0; idx < strTable.size(); idx++) {
-			if (putComma) outStream << "," << endl;
-			else putComma = true;
-			outStream << "     '" << strTable.getString(idx) << "'";
-		}
-		outStream << endl << "  ]" << endl;
+		outStream << " 'sets': {" << endl;
+		counted_ptr<Picture<counted_ptr<CellStatement>>> pic = program->head.getCell();
+		for (int i = 0; i < cellX; i++)
+			for (int j = 0; j < cellY; j++) {
+				if (pic->get(i,j)->getType() != EMPTY) {
+                    if (putComma++) outStream << "," << endl;
+                    outStream << "     '";
+					intraName(i, j);
+					outStream << "': [";
+					writeSetContents(i, j);
+					outStream << "]";
+					posSet.set(i, j, pic->get(i,j)->getSet());
+				}
+			}
 		outStream << " }," << endl << endl;
 	}
 
@@ -105,7 +136,7 @@ private:
 		bool setComma(false);
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != EMPTY) {
+				if (posSet.get(i,j)->getType() != SET_EMPTY) {
 					if (setComma) outStream << "," << endl;
 					else setComma = true;
 
@@ -125,7 +156,7 @@ private:
 	void writeAttributes() {
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != EMPTY) {
+				if (posSet.get(i,j)->getType() != SET_EMPTY) {
 					if (isIdentInSet(posSet.get(i,j))) {
 						outStream << "  string " << attr(i,j) << ", temp" << attr(i,j) << ";" << endl;
 					} else {
@@ -141,7 +172,7 @@ private:
 		bool b =  false;
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != EMPTY) {
+				if (posSet.get(i,j)->getType() != SET_EMPTY) {
 					if (b) outStream << ", ";
 					b = true;
 					if (isIdentInSet(posSet.get(i,j))) {
@@ -154,7 +185,7 @@ private:
 		outStream << ") {" << endl;
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != EMPTY) {
+				if (posSet.get(i,j)->getType() != SET_EMPTY) {
 					outStream << "    " << attr(i,j) << " = temp" << attr(i,j) << " = p" << attr(i,j) << ";" << endl;
 				}
 			}
@@ -402,7 +433,7 @@ private:
 		outStream << "  void next() {" << endl;
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != EMPTY) {
+				if (posSet.get(i,j)->getType() != SET_EMPTY) {
 					outStream << "    " << attr(i,j) << " = temp" << attr(i,j) << ";" << endl;
 				}
 			}

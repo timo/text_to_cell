@@ -24,7 +24,7 @@ public:
 		outStream.close();
 	}
 
-	bool generateCode(CellFile & program) {
+	bool generateCode(CellFile & program, Picture<counted_ptr<vector<CellStatement>>> setLists) {
 		cellX = program.head.getCell()->getWidth();
 		cellY = program.head.getCell()->getHeight();
 		posSet.setSize(cellX, cellY);
@@ -81,7 +81,7 @@ private:
 	void writeAttributes(bool b) {
 		if(!b) {
 			outStream << "  Cell * left, * right," << endl
-					  << "       * up, * down," << endl 
+					  << "       * up, * down," << endl
 					  << "       * dul, * dur," << endl
 					  << "       * ddl, * ddr;"<< endl << endl;
 		}
