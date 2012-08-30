@@ -240,20 +240,21 @@ private:
 
                 } else if (pic->get(i,j)->getType() == CELL_IDENTIFIER) {
 
-                    if (!(varTable[pic->get(i,j)->getIdentNumber()].get())) {
+                    auto identNum = pic->get(i,j)->getIdentNumber();
+                    if (!(varTable[identNum].get())) {
                         error << "Error: uninitialized variable on the right side of a block" << endl;
                         return false;
 
-                    } else if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == SET_CONTENT) {
+                    } else if (varTable[identNum]->getType() == SET_CONTENT) {
                         // is this identifier possible in this cell
-                        if (!identInSet(pic->get(i,j)->getIdentNumber(), posSet.get(i,j))) {
+                        if (!identInSet(identNum, posSet.get(i,j))) {
                             error << "Error: an identifier on the right side of a block does not fit into its cell" << endl;
                             return false;
                         }
 
-                    } else if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == VAR_CONTENT) {
+                    } else if (varTable[identNum]->getType() == VAR_CONTENT) {
                         // is this VAR_IDENTIFIER initialized here?
-                        VariableContent* varC = static_cast<VariableContent*>(varTable[pic->get(i,j)->getIdentNumber()].get());
+                        VariableContent* varC = static_cast<VariableContent*>(varTable[identNum].get());
                         if (!varC->defInBlock(block.getBlockIdent())) {
                             error << "Error: uninitialized variable on the right side of a block" << endl;
                             return false;
