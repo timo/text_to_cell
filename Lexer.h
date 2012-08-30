@@ -30,7 +30,7 @@ public:
     }
 
     void push_token(TokenType ttype) {
-        push_token(ttype);
+        buffer.push(counted_ptr<Token>(new Token(ttype)));
     }
 
     void parseString(string line, bool inPic = false) {
