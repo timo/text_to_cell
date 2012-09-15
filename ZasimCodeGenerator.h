@@ -91,7 +91,7 @@ private:
 	set<pair<int, int>> neighbour_cells;
 
 	void writeHead() {
-		toOutStream << "%YAML 1.2" << endl;
+		toOutStream << "%YAML 1.1" << endl;
 		toOutStream << "---" << endl;
 	}
 
