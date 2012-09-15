@@ -7,6 +7,8 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <set>
+#include <utility>
 #include "Token.h"
 #include "StringTable.h"
 #include "Lexer.h"
@@ -22,13 +24,16 @@
 #define toOutStream outStream
 #endif
 
+using std::pair;
+using std::set;
+
 class ZasimCodeGenerator {
 public:
 	ZasimCodeGenerator(StringTable & strTable, map<int, counted_ptr<Variable>> & varTable, string name)
 	: varTable(varTable), strTable(strTable), posSet(counted_ptr<Set>(new Set())) {
 		outStream.open(name + ".zac");
 #ifdef _ZASIM_CODE_GEN_DEBUG
-		outStream << "<body bgcolor=\"black\"><pre>";
+		outStream << "<head><style>span { border: 1px solid #111; }</style></head><body bgcolor=\"black\"><pre>";
 		outStream << "<span>";
 #endif
 	}
@@ -81,7 +86,9 @@ private:
 	int cellX, cellY;
 	Picture<counted_ptr<Set>> posSet;
 	ofstream outStream;
-	
+
+	set<pair<int, int>> neighbour_cells;
+
 	void writeHead() {
 		toOutStream << "{";
 	}
@@ -178,20 +185,6 @@ private:
 		toOutStream << "]," << endl;
 	}
 
-	void writeAttributes() {
-		for (int i = 0; i < cellX; i++)
-			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != SET_EMPTY) {
-					if (isIdentInSet(posSet.get(i,j))) {
-						toOutStream << "  string " << attr(i,j) << ", temp" << attr(i,j) << ";" << endl;
-					} else {
-						toOutStream << "  int    " << attr(i,j) << ", temp" << attr(i,j) << ";" << endl;
-					}
-				}
-			}
-		toOutStream << endl;
-	}
-
 	bool isIdentInSet(counted_ptr<Set> set) {
 		if (set->getType() == SET_IDENTIFIER) {
 			SetIdentifier* s1 = static_cast<SetIdentifier*>(set.get());
@@ -232,7 +225,7 @@ private:
 		if (!file.blocks.empty()) translateBlock(file.blocks[0]);
 		for (int i = 1; i < file.blocks.size(); i++) {
 			if (python_mode)
-				toOutStream << "el";
+				toOutStream << endl << "el";
 			else
 				toOutStream << " else ";
 			translateBlock(file.blocks[i]);
@@ -380,33 +373,33 @@ private:
 
 	void getCell(Block & block, int x, int y) { //, bool b = true) {
 		int x0(x-block.getX()), y0(y-block.getY());
+		neighbour_cells.insert(std::make_pair(x, y));
 		while(x0 < 0) {
 			if (y0 < 0) {
-				//toOutStream << ((b) ? "dul->": "dul");
-				toOutStream << "dul->";
+				toOutStream << "lu_";
 				y0 += cellY;
 			} else if (y0 >= cellY) {
-				toOutStream << "ddl->";
+				toOutStream << "ld_";
 				y0 -= cellY;
-			} else toOutStream << "left->";
+			} else toOutStream << "l_";
 			x0 += cellX;
 		}
 		while(x0 >= cellX) {
 			if (y0 < 0) {
-				toOutStream << "dur->";
+				toOutStream << "ru_";
 				y0 += cellY;
 			} else if (y0 >= cellY) {
-				toOutStream << "ddr->";
+				toOutStream << "rd_";
 				y0 -= cellY;
-			} else toOutStream << "right->";
+			} else toOutStream << "r_";
 			x0 -= cellX;
 		}
 		while(y0 < 0) {
-			toOutStream << "up->";
+			toOutStream << "u_";
 			y0 += cellY;
 		}
 		while(y0 >= cellY) {
-			toOutStream << "down->";
+			toOutStream << "d_";
 			y0 -= cellY;
 		}
 		toOutStream << attr(x0, y0);
@@ -425,32 +418,6 @@ private:
 			}
 			toOutStream << "  }" << endl;
 	}
-
-	/*
-	void writeSetFunctions(CellFile & file) {
-		for (int i = 0; i < file.blocks.size(); i++) {
-			counted_ptr<Picture<counted_ptr<CellStatement>>> pic = file.blocks[i].getLeft();
-			for (int x = 0; x < pic->getWidth(); x++)
-				for (int y = 0; y < pic->getHeight(); y++) {
-					if (pic->get(x,y)->getType() == SET_ONLY || pic->get(x,y)->getType() == IDENTIFIER_IN_SET) {
-						toOutStream << "	bool inSet" << file.blocks[i].getBlockIdent();
-						getCell(file.blocks[i], x, y, false);
-						toOutStream << "(";
-						bool b;
-						if (isIdentInSet(x-file.blocks[i].getX(), y-file.blocks[i].getY())) {
-							b = true;
-							toOutStream << "string str";
-						} else {
-							b = false;
-							toOutStream << "int i";
-						}
-						toOutStream << ") {" << endl;
-						//translateSet(file.blocks[i], pic->get(x,y)->getSet(), b);
-						toOutStream << "		return b1;" << endl << "	}" << endl << endl;
-					}
-				}
-		}
-	}*/
 
 	void translateSet(Block & block, counted_ptr<Set> set, bool idents, int x, int y) {
 
