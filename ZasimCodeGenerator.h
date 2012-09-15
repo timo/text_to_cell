@@ -57,6 +57,7 @@ public:
 		writeNeighbourhood();
 		python_mode = true;
 		writeFunction(*program);
+		toOutStream << "," << endl;
 		python_mode = false;
 		writeFunction(*program);
 		// ...
@@ -236,11 +237,9 @@ private:
 				toOutStream << " else ";
 			translateBlock(file.blocks[i]);
 		}
-		toOutStream << endl;
 		if (!python_mode)
-			toOutStream << "  }";
-		toOutStream << endl << endl;
-		toOutStream << "',";
+			toOutStream << endl << "  }";
+		toOutStream << "'";
 	}
 
 
