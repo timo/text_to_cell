@@ -16,7 +16,7 @@
 #include "BasicData.h"
 #include "Variable.h"
 
-#define _ZASIM_CODE_GEN_DEBUG
+//#define _ZASIM_CODE_GEN_DEBUG
 
 #ifdef _ZASIM_CODE_GEN_DEBUG
 #define toOutStream outStream << "</span><span title=\"" << __LINE__ << "\" style=\"color: hsl(" << ((__LINE__ * 1567396739L) % 360) << ", 100%, 75%);\">"
@@ -91,11 +91,11 @@ private:
 	set<pair<int, int>> neighbour_cells;
 
 	void writeHead() {
-		toOutStream << "{";
+		toOutStream << "%YAML 1.2" << endl;
+		toOutStream << "---" << endl;
 	}
 
 	void writeEnd() {
-		toOutStream << "}";
 #ifdef _ZASIM_CODE_GEN_DEBUG
 		outStream << "</span></pre></body>";
 #endif
@@ -107,36 +107,12 @@ private:
 		return str.str();
 	}
 
-	void writeSetContents(int i, int j) {
-		bool putComma(false);
-		auto stmt = setLists->get(i, j)->begin();
-		auto end = setLists->get(i, j)->end();
-		int index = 0;
-		for (;stmt != end; stmt++) {
-			if (putComma++) toOutStream << ", ";
-			switch (stmt->getType()) {
-			case CELL_IDENTIFIER:
-				toOutStream << "'" << strTable.getString(stmt->getIdentNumber()) << "'";
-				// string symbols get
-				symbol_remap[stmt->getIdentNumber()] = symbol_remap.size() - 1;
-				break;
-			case CELL_NUMBER:
-				toOutStream << stmt->getIdentNumber();
-				break;
-			default:
-				error << "cell " << i << ", " << j << " contains a strange set:" << stmt->print() << endl;
-			}
-		}
-	}
-
 	void writeStringTable() {
-		toOutStream << " 'strings': [";
-		bool putComma(false);
+		toOutStream << "strings:" << endl;
 		for (auto it : symbol_remap) {
-			if (putComma++) toOutStream << ", ";
-			toOutStream << "'" << strTable.getString(it.first) << "'";
+			toOutStream << " - " << strTable.getString(it.first) << endl;
 		}
-		toOutStream << "]," << endl << endl;
+		toOutStream << endl << endl;
 	}
 
 	/**
@@ -145,47 +121,69 @@ private:
 	 * each set of different names will have its own list.
 	 */
 	void writeSymbols() {
-		bool putComma(false);
-		toOutStream << " 'sets': {" << endl;
+		toOutStream << "sets:" << endl;
 		counted_ptr<Picture<counted_ptr<CellStatement>>> pic = program->head.getCell();
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
 				if (pic->get(i,j)->getType() != EMPTY) {
-					if (putComma++) toOutStream << "," << endl;
-					toOutStream << "     '";
+					toOutStream << "  - ";
 					toOutStream << attr(i, j);
-					toOutStream << "': [";
+					toOutStream << ":" << endl;
 					writeSetContents(i, j);
-					toOutStream << "]";
 					posSet.set(i, j, pic->get(i,j)->getSet());
 				}
 			}
-		toOutStream << " }," << endl << endl;
+		toOutStream << endl << endl;
+	}
+
+	void writeSetContents(int i, int j) {
+		auto stmt = setLists->get(i, j)->begin();
+		auto end = setLists->get(i, j)->end();
+		int index = 0;
+		for (;stmt != end; stmt++) {
+			switch (stmt->getType()) {
+			case CELL_IDENTIFIER:
+				toOutStream << "    - " << strTable.getString(stmt->getIdentNumber()) << endl;
+				// string symbols get
+				symbol_remap[stmt->getIdentNumber()] = symbol_remap.size() - 1;
+				break;
+			case CELL_NUMBER:
+				toOutStream << "    - " << stmt->getIdentNumber() << endl;
+				break;
+			default:
+				error << "cell " << i << ", " << j << " contains a strange set:" << stmt->print() << endl;
+			}
+		}
 	}
 
 	/**
 	 * Write out the "neighbourhood" part. like this:
 	 *
-	 *  'neighbourhood': [
-	 *      {'x': -1, 'y': -1, 'ns': 'A'},
-	 *      ...
-	 *      ]
+	 *  neighbourhood:
+	 *    -
+	 *      x: -1
+	 *      y: -1
+	 *      name: lu
+	 *    -
+	 *      x: -1
+	 *      y: -2
+	 *      name: l_lu
 	 */
 	void writeNeighbourhood() {
-		toOutStream << " 'neighbourhood': [" << endl;
-		bool setComma(false);
+		toOutStream << "neighbourhood:" << endl;
 		for (auto val : neighbour_cells) {
 			auto x = val.first;
 			auto y = val.second;
-			if (setComma) toOutStream << "," << endl;
-			else setComma = true;
 
 			Block a;
-			toOutStream << "    {'x': " << x << ", 'y': " << y << ", 'name': '";
+			toOutStream << "  -" << endl;
+			toOutStream << "    x: " << x << endl;
+			toOutStream << "    y: " << y << endl;
+			toOutStream << "    name: ";
 			getCell(a, x, y, false);
-			toOutStream << "'}";
+			toOutStream << endl;
 		}
-		toOutStream << "]" << endl;
+		toOutStream << endl;
 	}
 
 	bool isIdentInSet(counted_ptr<Set> set) {
@@ -221,21 +219,18 @@ private:
 
 	void writeFunction(CellFile & file) {
 		if (python_mode)
-			toOutStream << " 'python_code':" << endl;
+			toOutStream << "python_code: >" << endl << "    ";
 		else
-			toOutStream << " 'cpp_code':" << endl;
-		toOutStream << "'";
+			toOutStream << "cpp_code: >" << endl << "    ";
 		if (!file.blocks.empty()) translateBlock(file.blocks[0]);
 		for (int i = 1; i < file.blocks.size(); i++) {
 			if (python_mode)
-				toOutStream << endl << "el";
+				toOutStream << endl << "    el";
 			else
 				toOutStream << " else ";
 			translateBlock(file.blocks[i]);
 		}
-		if (!python_mode)
-			toOutStream << endl << "  }";
-		toOutStream << "'," << endl;
+		toOutStream << endl << endl << endl;
 	}
 
 
@@ -249,18 +244,18 @@ private:
 				if (pic->get(i,j)->getType() != EMPTY && pic->get(i,j)->getType() != SET_ONLY) {
 					// if (no variable initialization) not that important
 					if (pic->get(i,j)->getType() != CELL_IDENTIFIER && pic->get(i,j)->getType() != IDENTIFIER_IN_SET) {
-						if (b) toOutStream << AND_S << endl << "        ";
+						if (b) toOutStream << AND_S << endl << "          ";
 						b = true;
 						translateCondition(block, i, j);
 					} else if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == VAR_CONTENT) {
 						VariableContent::Koord k = static_cast<VariableContent *>(varTable[pic->get(i,j)->getIdentNumber()].get())->getKoord(block.getBlockIdent());
 						if (k.x != i || k.y != j) {
-							if (b) toOutStream << endl << "        " << AND_S;
+							if (b) toOutStream << endl << "          " << AND_S;
 							b = true;
 							translateCondition(block, i, j);
 						}
 					} else {
-						if (b) toOutStream << endl << "        " << AND_S;
+						if (b) toOutStream << endl << "          " << AND_S;
 						b = true;
 						translateCondition(block, i, j);
 					}
@@ -274,7 +269,7 @@ private:
 					pic->get(i,j)->getType() == TERM_IN_SET || 
 					pic->get(i,j)->getType() == SET_ONLY) {
 					
-					if (b) toOutStream << AND_S << endl << "        ";
+					if (b) toOutStream << AND_S << endl << "          ";
 					b = true;
 					
 					bool idents = false;
@@ -288,7 +283,7 @@ private:
 		
 		
 		for (int i = 0; i < block.getConstraints().size(); i++) {
-			if (b) toOutStream << endl << "        " << AND_S;
+			if (b) toOutStream << endl << "          " << AND_S;
 			b = true;
 			translateTerm(block.getConstraints()[i].getLeft(), block);
 			switch(block.getConstraints()[i].getOp()) {
@@ -351,7 +346,7 @@ private:
 		for (int i = 0; i < pic->getWidth(); i++)
 			for (int j = 0; j < pic->getHeight(); j++) {
 				if (pic->get(i,j)->getType() != EMPTY) {
-					toOutStream << "      result_" << attr(i,j) << " = ";
+					toOutStream << "        result_" << attr(i,j) << " = ";
 					switch (pic->get(i,j)->getType()) {
 					case CELL_NUMBER:
 						toOutStream << pic->get(i,j)->getIdentNumber();break;
@@ -470,8 +465,8 @@ private:
 										if (varTable[setL->getIdentifiers()[j]]->getType() == SET_CONTENT) {
 
 											toOutStream << (symbol_remap[setL->getIdentifiers()[j]]);
-											toOutStream << ' ' << COMMENT << " \"" << strTable.getString(setL->getIdentifiers()[j]) << '"' << endl;
-											toOutStream << "          ";
+											toOutStream << ' ' << COMMENT << " '" << strTable.getString(setL->getIdentifiers()[j]) << "'" << endl;
+											toOutStream << "            ";
 
 										} else if (varTable[setL->getIdentifiers()[j]]->getType() == VAR_CONTENT) {
 											VariableContent::Koord koord = static_cast<VariableContent *>(varTable[setL->getIdentifiers()[j]].get())->getKoord(block.getBlockIdent());
@@ -513,8 +508,8 @@ private:
 								translateSet(block, setS->getLeft() , idents, x, y);
 								switch (setS->getOp()) {
 								case UNION:					toOutStream << OR_S; break;
-								case INTERSECTION:			toOutStream << endl << "        " << AND_S; break;
-								case RELATIVE_COMPLEMENT:	toOutStream << endl << "        " << AND_S << NOT_S; break;
+								case INTERSECTION:			toOutStream << endl << "          " << AND_S; break;
+								case RELATIVE_COMPLEMENT:	toOutStream << endl << "          " << AND_S << NOT_S; break;
 								}
 								translateSet(block, setS->getRight(), idents, x, y);
 								toOutStream << ")";
