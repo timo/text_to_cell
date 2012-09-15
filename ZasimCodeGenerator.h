@@ -134,7 +134,7 @@ private:
 		bool putComma(false);
 		for (auto it : symbol_remap) {
 			if (putComma++) toOutStream << ", ";
-			toOutStream << "\"" << strTable.getString(it.first) << "\"";
+			toOutStream << "'" << strTable.getString(it.first) << "'";
 		}
 		toOutStream << "]," << endl << endl;
 	}
