@@ -379,47 +379,51 @@ private:
 	void getCell(Block & block, int x, int y, bool output_attr = true) {
 		int x0(x-block.getX()), y0(y-block.getY());
 		int rx(0), ry(0);
+		bool put_underscore(false);
+#define US ((put_underscore++) ? "_" : "")
 		if (x0 >= 0 && x0 < cellX && y0 >= 0 && y0 < cellY) {
-			toOutStream << "m_";
+			toOutStream << US << "m";
 		}
 		while(x0 < 0) {
 			if (y0 < 0) {
-				toOutStream << "lu_";
+				toOutStream << US << "lu";
 				y0 += cellY;
 				ry--;
 			} else if (y0 >= cellY) {
-				toOutStream << "ld_";
+				toOutStream << US << "ld";
 				y0 -= cellY;
 				ry++;
-			} else toOutStream << "l_";
+			} else toOutStream << US << "l";
 			x0 += cellX;
 			rx--;
 		}
 		while(x0 >= cellX) {
 			if (y0 < 0) {
-				toOutStream << "ru_";
+				toOutStream << US << "ru";
 				y0 += cellY;
 				ry--;
 			} else if (y0 >= cellY) {
-				toOutStream << "rd_";
+				toOutStream << US << "rd";
 				y0 -= cellY;
 				ry++;
-			} else toOutStream << "r_";
+			} else toOutStream << US << "r";
 			x0 -= cellX;
 			rx++;
 		}
 		while(y0 < 0) {
-			toOutStream << "u_";
+			toOutStream << US << "u";
 			y0 += cellY;
 		}
 		while(y0 >= cellY) {
-			toOutStream << "d_";
+			toOutStream << US << "d";
 			y0 -= cellY;
 		}
 
 		neighbour_cells.insert(std::make_pair(rx, ry));
 		if (output_attr)
-			toOutStream << attr(x0, y0);
+		{
+			toOutStream << US << attr(x0, y0);
+		}
 	}
 
 	void writeNextFunction() {
