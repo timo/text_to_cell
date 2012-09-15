@@ -24,7 +24,7 @@ public:
 		outStream.close();
 	}
 
-	bool generateCode(CellFile & program, Picture<counted_ptr<vector<CellStatement>>> setLists) {
+	bool generateCode(CellFile & program) {
 		cellX = program.head.getCell()->getWidth();
 		cellY = program.head.getCell()->getHeight();
 		posSet.setSize(cellX, cellY);
