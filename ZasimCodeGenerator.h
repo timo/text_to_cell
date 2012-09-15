@@ -345,6 +345,7 @@ private:
 	}*/
 
 	void translateResult(Block & block) {
+		string COMMENT = python_mode ? " # " : " // ";
 		counted_ptr<Picture<counted_ptr<CellStatement>>> pic = block.getRight();
 		for (int i = 0; i < pic->getWidth(); i++)
 			for (int j = 0; j < pic->getHeight(); j++) {
@@ -353,10 +354,12 @@ private:
 					switch (pic->get(i,j)->getType()) {
 					case CELL_NUMBER:
 						toOutStream << pic->get(i,j)->getIdentNumber();break;
-					case CELL_IDENTIFIER:	
+					case CELL_IDENTIFIER:
 						if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == SET_CONTENT) {
-							toOutStream << '"' << strTable.getString(pic->get(i,j)->getIdentNumber()) << '"';
+							toOutStream << cell_values.getIdentity(strTable.getString(pic->get(i,j)->getIdentNumber()));
+							toOutStream << COMMENT << '"' << strTable.getString(pic->get(i,j)->getIdentNumber()) << '"' << endl;
 						} else  if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == VAR_CONTENT) {
+							// TODO when does this do something? do we need to translate it with the cell_values?
 							VariableContent::Koord koord = static_cast<VariableContent *>(varTable[pic->get(i,j)->getIdentNumber()].get())->getKoord(block.getBlockIdent());
 							getCell(block, koord.x, koord.y);
 						}
