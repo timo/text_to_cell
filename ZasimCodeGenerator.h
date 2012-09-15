@@ -77,7 +77,7 @@ public:
 private:
 	map<int, counted_ptr<Variable>> & varTable;
 	StringTable & strTable;
-	StringTable cell_values; // holds the numbers used for strings in cells
+	map<int, int> symbol_remap;
 	stringstream error;
 	Picture<counted_ptr<vector<CellStatement>>> *setLists;
 	CellFile *program;
@@ -111,13 +111,14 @@ private:
 		bool putComma(false);
 		auto stmt = setLists->get(i, j)->begin();
 		auto end = setLists->get(i, j)->end();
+		int index = 0;
 		for (;stmt != end; stmt++) {
 			if (putComma++) toOutStream << ", ";
 			switch (stmt->getType()) {
 			case CELL_IDENTIFIER:
 				toOutStream << "'" << strTable.getString(stmt->getIdentNumber()) << "'";
-				// insert the value with a new counter into the string-to-int table.
-				cell_values.getIdentity(strTable.getString(stmt->getIdentNumber()));
+				// string symbols get
+				symbol_remap[stmt->getIdentNumber()] = symbol_remap.size() - 1;
 				break;
 			case CELL_NUMBER:
 				toOutStream << stmt->getIdentNumber();
@@ -131,9 +132,9 @@ private:
 	void writeStringTable() {
 		toOutStream << " 'strings': [";
 		bool putComma(false);
-		for (int id = 1; id <= cell_values.size(); id++) {
+		for (auto it : symbol_remap) {
 			if (putComma++) toOutStream << ", ";
-			toOutStream << "\"" << cell_values.getString(id) << "\"";
+			toOutStream << "\"" << strTable.getString(it.first) << "\"";
 		}
 		toOutStream << "]," << endl << endl;
 	}
@@ -356,10 +357,10 @@ private:
 						toOutStream << pic->get(i,j)->getIdentNumber();break;
 					case CELL_IDENTIFIER:
 						if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == SET_CONTENT) {
-							toOutStream << cell_values.getIdentity(strTable.getString(pic->get(i,j)->getIdentNumber()));
+							toOutStream << symbol_remap[pic->get(i,j)->getIdentNumber()];
 							toOutStream << COMMENT << '"' << strTable.getString(pic->get(i,j)->getIdentNumber()) << '"' << endl;
 						} else  if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == VAR_CONTENT) {
-							// TODO when does this do something? do we need to translate it with the cell_values?
+							// TODO when does this do something? do we need to translate it with the symbol_remap??
 							VariableContent::Koord koord = static_cast<VariableContent *>(varTable[pic->get(i,j)->getIdentNumber()].get())->getKoord(block.getBlockIdent());
 							getCell(block, koord.x, koord.y);
 						}
@@ -468,7 +469,7 @@ private:
 										toOutStream << " == ";
 										if (varTable[setL->getIdentifiers()[j]]->getType() == SET_CONTENT) {
 
-											toOutStream << (cell_values.getIdentity(strTable.getString(setL->getIdentifiers()[j])) - 1);
+											toOutStream << (symbol_remap[setL->getIdentifiers()[j]]);
 											toOutStream << ' ' << COMMENT << " \"" << strTable.getString(setL->getIdentifiers()[j]) << '"' << endl;
 											toOutStream << "          ";
 
