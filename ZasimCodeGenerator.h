@@ -59,12 +59,12 @@ public:
 
 		writeHead();
 		writeSymbols();
-		writeNeighbourhood();
 		python_mode = true;
 		writeFunction(*program);
 		toOutStream << "," << endl;
 		python_mode = false;
 		writeFunction(*program);
+		writeNeighbourhood();
 		// ...
 		writeEnd();
 		return error.str().empty();
@@ -158,30 +158,19 @@ private:
 	 *      ]
 	 */
 	void writeNeighbourhood() {
-		// TODO: Moore Neighbourhood was hardcoded before. make it better.
-		toOutStream << " 'neighbourhood': 'MooreNeighbourhood'," << endl;
-
-		return;
-
-		// this is wrong
 		toOutStream << " 'neighbourhood': [" << endl;
 		bool setComma(false);
-		for (int i = 0; i < cellX; i++)
-			for (int j = 0; j < cellY; j++) {
-				if (posSet.get(i,j)->getType() != SET_EMPTY) {
-					if (setComma) toOutStream << "," << endl;
-					else setComma = true;
+		for (auto val : neighbour_cells) {
+			auto x = val.first;
+			auto y = val.second;
+			if (setComma) toOutStream << "," << endl;
+			else setComma = true;
 
-					toOutStream << "{'x': " << i << ", 'y': " << j << ", 'ns': ";
-					// TODO: give different names to different sets
-					if (isIdentInSet(posSet.get(i,j))) {
-						toOutStream << "'symbol'";
-					} else {
-						toOutStream << "'num'";
-					}
-					toOutStream << "}";
-				}
-			}
+			Block a;
+			toOutStream << "    {'x': " << x << ", 'y': " << y << ", 'name': '";
+			getCell(a, x, y, false);
+			toOutStream << "'}";
+		}
 		toOutStream << "]," << endl;
 	}
 
@@ -218,9 +207,9 @@ private:
 
 	void writeFunction(CellFile & file) {
 		if (python_mode)
-			toOutStream << "'python_code':" << endl;
+			toOutStream << " 'python_code':" << endl;
 		else
-			toOutStream << "'c_code':" << endl;
+			toOutStream << " 'cpp_code':" << endl;
 		toOutStream << "'";
 		if (!file.blocks.empty()) translateBlock(file.blocks[0]);
 		for (int i = 1; i < file.blocks.size(); i++) {
@@ -370,29 +359,35 @@ private:
 				}
 			}
 	}
-
-	void getCell(Block & block, int x, int y) { //, bool b = true) {
+	
+	void getCell(Block & block, int x, int y, bool output_attr = true) { //, bool b = true) {
 		int x0(x-block.getX()), y0(y-block.getY());
-		neighbour_cells.insert(std::make_pair(x, y));
+		int rx(0), ry(0);
 		while(x0 < 0) {
 			if (y0 < 0) {
 				toOutStream << "lu_";
 				y0 += cellY;
+				ry--;
 			} else if (y0 >= cellY) {
 				toOutStream << "ld_";
 				y0 -= cellY;
+				ry++;
 			} else toOutStream << "l_";
 			x0 += cellX;
+			rx--;
 		}
 		while(x0 >= cellX) {
 			if (y0 < 0) {
 				toOutStream << "ru_";
 				y0 += cellY;
+				ry--;
 			} else if (y0 >= cellY) {
 				toOutStream << "rd_";
 				y0 -= cellY;
+				ry++;
 			} else toOutStream << "r_";
 			x0 -= cellX;
+			rx++;
 		}
 		while(y0 < 0) {
 			toOutStream << "u_";
@@ -402,7 +397,10 @@ private:
 			toOutStream << "d_";
 			y0 -= cellY;
 		}
-		toOutStream << attr(x0, y0);
+
+		neighbour_cells.insert(std::make_pair(rx, ry));
+		if (output_attr)
+			toOutStream << attr(x0, y0);
 	}
 
 	void writeNextFunction() {
