@@ -59,9 +59,9 @@ public:
 
 		writeHead();
 		writeSymbols();
+		writeStringTable();
 		python_mode = true;
 		writeFunction(*program);
-		toOutStream << "," << endl;
 		python_mode = false;
 		writeFunction(*program);
 		writeNeighbourhood();
@@ -77,6 +77,7 @@ public:
 private:
 	map<int, counted_ptr<Variable>> & varTable;
 	StringTable & strTable;
+	StringTable cell_values; // holds the numbers used for strings in cells
 	stringstream error;
 	Picture<counted_ptr<vector<CellStatement>>> *setLists;
 	CellFile *program;
@@ -115,16 +116,28 @@ private:
 			switch (stmt->getType()) {
 			case CELL_IDENTIFIER:
 				toOutStream << "'" << strTable.getString(stmt->getIdentNumber()) << "'";
+				// insert the value with a new counter into the string-to-int table.
+				cell_values.getIdentity(strTable.getString(stmt->getIdentNumber()));
 				break;
 			case CELL_NUMBER:
 				toOutStream << stmt->getIdentNumber();
 				break;
 			default:
-				error << "cell " << i << ", " << j << " contains a strange set:" << stmt->print();
+				error << "cell " << i << ", " << j << " contains a strange set:" << stmt->print() << endl;
 			}
 		}
 	}
-	
+
+	void writeStringTable() {
+		toOutStream << " 'strings': [";
+		bool putComma(false);
+		for (int id = 1; id <= cell_values.size(); id++) {
+			if (putComma++) toOutStream << ", ";
+			toOutStream << "\"" << cell_values.getString(id) << "\"";
+		}
+		toOutStream << "]," << endl << endl;
+	}
+
 	/**
 	 * Write out the symbol list.
 	 * At the moment, there's only the 'symbol' list, but in the future,
@@ -137,8 +150,8 @@ private:
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
 				if (pic->get(i,j)->getType() != EMPTY) {
-                    if (putComma++) toOutStream << "," << endl;
-                    toOutStream << "     '";
+					if (putComma++) toOutStream << "," << endl;
+					toOutStream << "     '";
 					toOutStream << attr(i, j);
 					toOutStream << "': [";
 					writeSetContents(i, j);
@@ -171,7 +184,7 @@ private:
 			getCell(a, x, y, false);
 			toOutStream << "'}";
 		}
-		toOutStream << "]," << endl;
+		toOutStream << "]" << endl;
 	}
 
 	bool isIdentInSet(counted_ptr<Set> set) {
@@ -221,7 +234,7 @@ private:
 		}
 		if (!python_mode)
 			toOutStream << endl << "  }";
-		toOutStream << "'";
+		toOutStream << "'," << endl;
 	}
 
 
@@ -360,9 +373,12 @@ private:
 			}
 	}
 	
-	void getCell(Block & block, int x, int y, bool output_attr = true) { //, bool b = true) {
+	void getCell(Block & block, int x, int y, bool output_attr = true) {
 		int x0(x-block.getX()), y0(y-block.getY());
 		int rx(0), ry(0);
+		if (x0 >= 0 && x0 < cellX && y0 >= 0 && y0 < cellY) {
+			toOutStream << "m_";
+		}
 		while(x0 < 0) {
 			if (y0 < 0) {
 				toOutStream << "lu_";
@@ -422,6 +438,7 @@ private:
 		string OR_S = python_mode ? " or " : " || ";
 		string AND_S = python_mode ? "and " : "&& ";
 		string NOT_S = python_mode ? "not " : "!";
+		string COMMENT = python_mode ? "#" : "//";
 
 		switch(set->getType()) {
 		case SET_IDENTIFIER:	translateSet(block, static_cast<VariableSet*>(varTable[static_cast<SetIdentifier*>(set.get())->getName()].get())->getSet(), idents, x, y); break;
@@ -443,7 +460,11 @@ private:
 										getCell(block,x,y);
 										toOutStream << " == ";
 										if (varTable[setL->getIdentifiers()[j]]->getType() == SET_CONTENT) {
-											toOutStream << '"' << strTable.getString(setL->getIdentifiers()[j]) << '"';
+
+											toOutStream << (cell_values.getIdentity(strTable.getString(setL->getIdentifiers()[j])) - 1);
+											toOutStream << ' ' << COMMENT << " \"" << strTable.getString(setL->getIdentifiers()[j]) << '"' << endl;
+											toOutStream << "          ";
+
 										} else if (varTable[setL->getIdentifiers()[j]]->getType() == VAR_CONTENT) {
 											VariableContent::Koord koord = static_cast<VariableContent *>(varTable[setL->getIdentifiers()[j]].get())->getKoord(block.getBlockIdent());
 											getCell(block, koord.x, koord.y);
@@ -493,96 +514,6 @@ private:
 							}
 		}
 	}
-	
-	/*void translateSet(Block & block, counted_ptr<Set> set, bool idents, int counter = 1) {
-
-		switch(set->getType()) {
-		case SET_IDENTIFIER:	translateSet(block, static_cast<VariableSet*>(varTable[static_cast<SetIdentifier*>(set.get())->getName()].get())->getSet(), idents, counter); break;
-		case SET_ENUM:		{
-								toOutStream << "		bool b" << counter << " = ";
-								SetList * setL = static_cast<SetList *>(set.get());
-									
-								bool b = false;
-								toOutStream << "(";
-								if (idents) {
-									for (int j = 0; j < setL->getNumbers().size(); j++) {
-										if (b) toOutStream << " ||" << endl << "			   ";
-										else b = true;
-										toOutStream << "str == " << '"' << setL->getNumbers()[j] << '"';
-									}
-									for (int j = 0; j < setL->getIdentifiers().size(); j++) {
-										if (b) toOutStream << " ||" << endl << "			   ";
-										else b = true;
-										if (varTable[setL->getIdentifiers()[j]]->getType() == SET_CONTENT) {
-											toOutStream << "str == " << '"' << strTable.getString(setL->getIdentifiers()[j]) << '"';
-										} else if (varTable[setL->getIdentifiers()[j]]->getType() == VAR_CONTENT) {
-											VariableContent::Koord koord = static_cast<VariableContent *>(varTable[setL->getIdentifiers()[j]].get())->getKoord(block.getBlockIdent());
-											toOutStream << "str == ";
-											getCell(block, koord.x, koord.y);
-										}
-									}
-								} else {
-									for (int j = 0; j < setL->getNumbers().size(); j++) {
-										if (b) toOutStream << " ||" << endl << "			   ";
-										else b = true;
-										toOutStream << "i == " << setL->getNumbers()[j];
-									} 
-									for (int j = 0; j < setL->getIdentifiers().size(); j++) {
-										if (b) toOutStream << " ||" << endl << "			   ";
-										else b = true;
-										if (varTable[setL->getIdentifiers()[j]]->getType() == VAR_CONTENT) {
-											VariableContent::Koord koord = static_cast<VariableContent *>(varTable[setL->getIdentifiers()[j]].get())->getKoord(block.getBlockIdent());
-											toOutStream << "i == ";
-											getCell(block, koord.x, koord.y);
-										}
-									}
-								}
-								toOutStream << ");" << endl;
-								break;
-							}
-		case SET_RANGE:		{// Can only be used in Number only Sets
-								toOutStream << "		bool b" << counter << " = ";
-								SetRange * setR = static_cast<SetRange *>(set.get());
-								toOutStream << "(i <= " << setR->getLast() << " && i >= " << setR->getFirst() << ");" << endl;
-								break;
-							}
-		case SET_STATEMENT:	{
-								SetStatement * setS = static_cast<SetStatement *>(set.get());
-								translateSet(block, setS->getLeft() , idents, 2*counter);
-								translateSet(block, setS->getRight(), idents, 2*counter +1);
-								toOutStream << "		bool b" << counter << " = (b" << 2*counter;
-								switch (setS->getOp()) {
-								case UNION:					toOutStream << " || b"  << 2*counter + 1 << ");" << endl; break;
-								case INTERSECTION:			toOutStream << " && b"  << 2*counter + 1 << ");" << endl; break;
-								case RELATIVE_COMPLEMENT:	toOutStream << " && !b" << 2*counter + 1 << ");" << endl; break;
-								}
-								break;
-							}
-		}
-	}*/
-
-	/*
-	void writeConstraintFunctions(CellFile & file) {
-		for (int i = 0; i < file.blocks.size(); i++) {
-			Block & b = file.blocks[i];
-			for (int j = 0; j < b.getConstraints().size(); j++) {
-				toOutStream << "	bool constraintB" << b.getBlockIdent() << "C" << j;
-				toOutStream << "() {" << endl << "		return ";
-				translateTerm(b.getConstraints()[j].getLeft(), b);
-				switch(b.getConstraints()[j].getOp()) {
-				case OP_EQ_EQ:		toOutStream << " == "; break;
-				case OP_LESS:		toOutStream << " < ";  break;
-				case OP_LESS_EQ:	toOutStream << " <= "; break;
-				case OP_GREATER:	toOutStream << " > ";  break;
-				case OP_GREATER_EQ:	toOutStream << " >= "; break;
-				case OP_NOT_EQ:		toOutStream << " != "; break;
-				}
-				translateTerm(b.getConstraints()[j].getRight(), b);
-				
-				toOutStream << ";" << endl << "	}" << endl << endl;
-			}
-		}
-	}*/
 
 	void translateTerm(counted_ptr<Term> t, Block & b) {
 		switch(t->getType()) {

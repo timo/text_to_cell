@@ -26,6 +26,10 @@ public:
 		return revTable[ident];
 	}
 
+	int size() {
+		return counter - 1;
+	}
+
 private:
 	map<string, int> table; // would have to be changed to incorporate namespaces 
 							// instead of just int use int and namespace identifier of some kind

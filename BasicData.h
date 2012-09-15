@@ -189,7 +189,9 @@ public:
 private:
 	counted_ptr<Picture<counted_ptr<CellStatement>>> left;
 	counted_ptr<Picture<counted_ptr<CellStatement>>> right;
-	int xMain, yMain, blockIdent;
+	int xMain = 0;
+    int yMain = 0;
+    int blockIdent;
 	bool turn90, turn180, turn270, e, mx, my;
 	vector<Constraint> constraints;
 };
