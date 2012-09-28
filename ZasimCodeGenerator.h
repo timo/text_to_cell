@@ -126,7 +126,7 @@ private:
 		for (int i = 0; i < cellX; i++)
 			for (int j = 0; j < cellY; j++) {
 				if (pic->get(i,j)->getType() != EMPTY) {
-					toOutStream << "  - ";
+					toOutStream << "  ";
 					toOutStream << attr(i, j);
 					toOutStream << ":" << endl;
 					writeSetContents(i, j);
@@ -353,7 +353,10 @@ private:
 					case CELL_IDENTIFIER:
 						if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == SET_CONTENT) {
 							toOutStream << symbol_remap[pic->get(i,j)->getIdentNumber()];
-							toOutStream << COMMENT << '"' << strTable.getString(pic->get(i,j)->getIdentNumber()) << '"' << endl;
+							toOutStream << COMMENT << '"' << strTable.getString(pic->get(i,j)->getIdentNumber()) << '"';
+							if (!python_mode)
+								toOutStream << ';';
+							toOutStream << endl;
 						} else  if (varTable[pic->get(i,j)->getIdentNumber()]->getType() == VAR_CONTENT) {
 							// TODO when does this do something? do we need to translate it with the symbol_remap??
 							VariableContent::Koord koord = static_cast<VariableContent *>(varTable[pic->get(i,j)->getIdentNumber()].get())->getKoord(block.getBlockIdent());
@@ -365,8 +368,6 @@ private:
 					default:
 						error << "Error: not expected this kind of cell on the right side " << pic->get(i,j)->getType() << " should have been caught by semantics analyser" << endl;
 					}
-					if (!python_mode)
-						toOutStream << ';';
 					toOutStream << endl;
 				}
 			}
