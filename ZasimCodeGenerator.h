@@ -369,6 +369,12 @@ private:
 						error << "Error: not expected this kind of cell on the right side " << pic->get(i,j)->getType() << " should have been caught by semantics analyser" << endl;
 					}
 					toOutStream << endl;
+				} else if (program->head.getCell()->get(i,j)->getType() != EMPTY){
+					toOutStream << "        result_" << attr(i,j) << " = ";
+					toOutStream << "m_" << attr(i, j);
+					if (!python_mode)
+						toOutStream << ";";
+					toOutStream << endl;
 				}
 			}
 	}
